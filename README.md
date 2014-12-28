@@ -13,9 +13,13 @@ Add to composer.json in your project
 	}
 }
 ```
+then run command
+```code
+php composer.phar update
+```
 Configuration
 -------------
-
+frontend/config/main.php
 ```php
 return [
     'components' => [
@@ -87,7 +91,7 @@ Yii::$app->view->setSeoData($model->getSeoBehavior());
 Yii::$app->view->noIndex($and_no_follow_bool);
 ```
 
-Get link to view
+Get link to view. Based on behavior config values: `viewRoute` and `additionalLinkParams`
 ```php
 // return url to material view page:
 $url = $model->getViewUrl();
