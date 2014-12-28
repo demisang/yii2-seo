@@ -5,7 +5,7 @@ Library for working with SEO parameters of models
 Installation
 composer.json
 ------------
-```code
+```json
 {
 	"require":
 	{
@@ -62,6 +62,15 @@ public function behaviors()
     ];
 }
 ```
+
+In main layout:
+```php
+<head>
+    <?php $this->renderMetaTags(); ?>
+    ...
+</head>
+```
+
 Usage
 -----
 In view-file "view.php" for model:
@@ -75,6 +84,7 @@ $this->noIndex($and_no_follow_bool);
 or in controller:
 ```php
 Yii::$app->view->setSeoData($model->getSeoBehavior());
+Yii::$app->view->noIndex($and_no_follow_bool);
 ```
 
 Get link to view
@@ -90,12 +100,4 @@ $abs_url = $model->absoluteViewUrl;
 Render SEO:url and SEO:meta fields in the "_form.php" file:
 ```php
 $model->renderFormSeoFields($active_form_or_void);
-```
-
-In main layout:
-```php
-<head>
-    <?php $this->renderMetaTags(); ?>
-    ...
-</head>
 ```
