@@ -73,12 +73,12 @@ In main layout:
 
 Usage
 -----
-In view-file "view.php" for model:
+In "view.php" file for model:
 ```php
-// set SEO:meta data
+// set SEO:meta data for current page
 $this->setSeoData($model->getSeoBehavior());
 
-// set link tag for "no index" (and optional no "follow")
+// set link tag for "no index" (and optional "no follow") for current page
 $this->noIndex($and_no_follow_bool);
 ```
 or in controller:
