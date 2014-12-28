@@ -3,8 +3,8 @@ yii2-seo
 Library for working with SEO parameters of models
 
 Installation
-composer.json
 ------------
+Add to composer.json in your project
 ```json
 {
 	"require":
