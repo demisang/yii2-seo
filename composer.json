@@ -1,0 +1,29 @@
+{
+    "name": "demi/seo",
+    "description": "Library for working with SEO parameters of models",
+    "keywords": ["seo", "yii2"],
+    "homepage": "https://github.com/demisang/yii2-seo#readme",
+    "type": "yii2-extension",
+    "license": "GNU",
+    "authors": [
+        {
+            "name": "Ivan Orlov",
+            "email": "orlov_mail@mail.ru",
+            "homepage": "http://ivan-orlov.com/",
+            "role": "Creator"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/demisang/yii2-seo/issues",
+        "source": "https://github.com/demisang/yii2-seo"
+    },
+    "require": {
+        "php": ">=5.4.0",
+        "yiisoft/yii2": "*"
+    },
+    "autoload": {
+        "psr-0": {
+            "demi\\seo\\": ""
+        }
+    },
+}
