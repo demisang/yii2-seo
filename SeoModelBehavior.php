@@ -25,7 +25,7 @@ use yii\widgets\ActiveForm;
 class SeoModelBehavior extends Behavior
 {
     /** @var string Название поля, отвечающего за SEO:url */
-    private $_urlField = 'seo_url';
+    private $_urlField;
     /** @var string|callable Название поля из которого будет формироваться SEO:url, либо функция,
      * которая вернёт текст, который будет обработан для генерации SEO:url */
     private $_urlProduceField = 'title';
@@ -39,7 +39,7 @@ class SeoModelBehavior extends Behavior
     /**
      * @var string Название результирующего поля, куда будут сохранены
      * в сериализованном виде все SEO-параметры */
-    private $_metaField = 'seo_meta';
+    private $_metaField;
     /** @var boolean|callable Позволено ли пользователю менять SEO-данные */
     private $_clientChange = false;
     /** @var integer Максимальная длинна поля SEO: url */
@@ -113,6 +113,11 @@ class SeoModelBehavior extends Behavior
             $this->_clientChange = call_user_func($this->_clientChange, $owner);
         }
 
+        // Если маршрут для создания ссылки на просмотр модели не указан - генерируем
+        if (empty($this->_viewRoute)) {
+            $this->_viewRoute = strtolower(basename(get_class($owner))) . '/view';
+        }
+
         // Определяем контроллер и заносим его экшены в стоп-лист
         if (class_exists($this->_controllerClassName, false)) {
             $reflection = new \ReflectionClass($this->_controllerClassName);
@@ -139,16 +144,19 @@ class SeoModelBehavior extends Behavior
     {
         $model = $this->owner;
 
-        // Перебираем все доступные языки, зачастую он всего один
-        $seo_fields = array($this->_urlField);
-        foreach ($this->_languages as $lang) {
-            // Перебираем meta-поля и заполняем при отсутствии текущих данных
-            foreach ($this->getMetaFields() as $meta_params_key => $meta_param_value_generator) {
-                $seo_fields[] = $meta_params_key . '_' . $lang;
-
-                // За одно обрезаем длину meta-срок до установленных значений
-                $this->applyMaxLength($meta_params_key, $lang);
+        if (!empty($this->_metaField)) {
+            // Перебираем все доступные языки, зачастую он всего один
+            foreach ($this->_languages as $lang) {
+                // Перебираем meta-поля и обрезаем длину meta-срок до установленных значений
+                foreach ($this->getMetaFields() as $meta_param_key => $meta_param_value_generator) {
+                    $this->applyMaxLength($meta_param_key, $lang);
+                }
             }
+        }
+
+        if (empty($this->_urlField)) {
+            // Если не нужна работа с SEO:url, то пропускаем дальнейшую работу
+            return;
         }
 
         // Добавляем валидатор UNIQUE для SEO:url
@@ -222,6 +230,11 @@ class SeoModelBehavior extends Behavior
     {
         $model = $this->owner;
 
+        if (empty($this->_metaField)) {
+            // Если не указано meta-поле, то мы его не будем сохранять
+            return;
+        }
+
         // Проверяем все SEO поля и заполняем их данными: если указаны пользователем - оставляем как есть, если
         // отсутствует - генерируем
         $this->fillMeta();
@@ -257,13 +270,15 @@ class SeoModelBehavior extends Behavior
     {
         $model = $this->owner;
 
-        // Распаковываем meta-параметры
-        $meta = @unserialize($model->getAttribute($this->_metaField));
-        if (!is_array($meta)) {
-            $meta = [];
-        }
+        if (!empty($this->_metaField)) {
+            // Распаковываем meta-параметры
+            $meta = @unserialize($model->getAttribute($this->_metaField));
+            if (!is_array($meta)) {
+                $meta = [];
+            }
 
-        $model->setAttribute($this->_metaField, $meta);
+            $model->setAttribute($this->_metaField, $meta);
+        }
     }
 
     /**
@@ -330,13 +345,23 @@ class SeoModelBehavior extends Behavior
             $lang = Yii::$app->language;
         }
 
-        // Проверяем, чтобы все meta-поля были заполнены значениями
-        $this->fillMeta();
-
         $buffer = [];
-        foreach ($this->getMetaFields() as $meta_params_key => $meta_param_value_generator) {
-            $buffer[$meta_params_key] = $this->getMetaFieldVal($meta_params_key, $lang);
+
+        if (!empty($this->_metaField)) {
+            // Проверяем, чтобы все meta-поля были заполнены значениями
+            $this->fillMeta();
         }
+
+        // Если meta хранится в model, то вернём значение из модели, иначе будем генерировать на лету
+        $getValMethodName = !empty($this->_metaField) ? 'getMetaFieldVal' : 'getProduceFieldValue';
+
+        foreach ($this->getMetaFields() as $meta_params_key => $meta_param_value_generator) {
+            // Выбираем какой параметр передадим в функцию получения значения: название поля или функцию-генератор
+            $getValMethodParam = !empty($this->_metaField) ? $meta_params_key : $meta_param_value_generator;
+            // Непосредственное получение значения, либо из meta-поля модели, либо сгенерированноеы
+            $buffer[$meta_params_key] = $this->$getValMethodName($getValMethodParam, $lang);
+        }
+
 
         return $buffer;
     }
@@ -344,7 +369,7 @@ class SeoModelBehavior extends Behavior
     /**
      * Возвращаем этот экземпляр behavior`а
      *
-     * @return ModelBehavior $this
+     * @return SeoModelBehavior $this
      */
     public function getSeoBehavior()
     {
@@ -378,14 +403,14 @@ class SeoModelBehavior extends Behavior
      */
     public function getViewUrl($title = null, $anchor = null, $abs = false)
     {
-        // Если маршрут для создания ссылки на просмотр модели не указан - генерируем
-        if (empty($this->_viewRoute)) {
-            $this->_viewRoute = strtolower(basename(get_class($this->owner))) . '/view';
-        }
-
         // Если дополнительные параметры ссылки должны генерироваться - делаем генерацию
         if (is_callable($this->_additionalLinkParams)) {
             $this->_additionalLinkParams = call_user_func($this->_additionalLinkParams, $this->owner);
+        }
+
+        // Если модель не имеет SEO:url, то в качестве значения этого поля будет использоваться ID модели
+        if (empty($this->_urlField) && empty($title)) {
+            $title = $this->owner->getPrimaryKey();
         }
 
         // Добавляем параметр, который отвечает за отображение SEO:url

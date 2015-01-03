@@ -52,6 +52,7 @@ public function behaviors()
                 'metaField' => 'seo_meta',
                 'clientChange' => Yii::$app->has('user') && Yii::$app->user->can(User::ROLE_ADMIN),
                 'viewRoute' => '/post/view',
+                'linkTitleParamName' => 'title',
                 'additionalLinkParams' => function ($model) {
                         return ['category' => $model->category->seo_url];
                     },
