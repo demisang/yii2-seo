@@ -1,7 +1,4 @@
 <?php
-/**
- * Поведение для работы с SEO параметрами
- */
 
 namespace demi\seo;
 
@@ -11,14 +8,14 @@ use yii\db\ActiveRecord;
 use yii\db\Query;
 use yii\helpers\Html;
 use yii\helpers\Url;
-use yii\validators\FilterValidator;
 use yii\validators\UniqueValidator;
 use yii\validators\Validator;
 use yii\widgets\ActiveForm;
 
 /**
- * Class SeoModelBehavior
- * @package common\components\behaviors
+ * Поведение для работы с SEO параметрами
+ *
+ * @package demi\seo
  *
  * @property ActiveRecord $owner
  */
@@ -51,7 +48,7 @@ class SeoModelBehavior extends Behavior
     /** @var integer Максимальная длинна поля Keywords */
     private $_maxKeysLength = 150;
     /** @var array Запрещённые для использования SEO:url адреса */
-    private $_stopNames = [];
+    private $_stopNames = ['create', 'update', 'delete', 'view', 'index'];
     /** @var string маршрут для создания SEO ссылки, например "post/view" */
     private $_viewRoute = '';
     /** @var string Название параметра, в котором будет передан SEO:url во создания ссылки
@@ -75,13 +72,13 @@ class SeoModelBehavior extends Behavior
     private $_checkSeoUrlRegexp = '';
     /** @var string Кодировка сайта */
     private $_encoding = 'UTF-8';
-    /**
-     * @var array Конфигурационный массив, который переопределяет вышеуказанные настройки
-     */
+    /** @var array Конфигурационный массив, который переопределяет вышеуказанные настройки */
     public $seoConfig = [];
     const TITLE_KEY = 'title';
     const DESC_KEY = 'desc';
     const KEYS_KEY = 'keys';
+    /** @var array Сохранённые экшены контроллеров для занесения их в стоп-лист */
+    private static $_controllersActions = [];
 
     public function events()
     {
@@ -119,24 +116,34 @@ class SeoModelBehavior extends Behavior
         }
 
         // Определяем контроллер и заносим его экшены в стоп-лист
-        if (class_exists($this->_controllerClassName, false)) {
-            $reflection = new \ReflectionClass($this->_controllerClassName);
-            $methods = $reflection->getMethods(\ReflectionMethod::IS_PUBLIC);
-            $controller = $reflection->newInstance(null);
-            // Добавляем все подключаемые экшены контроллера
-            $buffer = array_keys($controller->actions());
-            // Перебираем все основные экшены контроллера
-            foreach ($methods as $method) {
-                /* @var $method \ReflectionMethod */
-                $name = $method->getName();
-                if ($name !== 'actions' && substr($name, 0, 6) == 'action') {
-                    $action = substr($name, 6, strlen($name));
-                    $action[0] = strtolower($action[0]);
-                    $buffer[] = $action;
+        if (!empty($this->_urlField) && !empty($this->_controllerClassName)) {
+            if (isset(static::$_controllersActions[$this->_controllerClassName])) {
+                // Получаем ранее определённые экшены контроллера
+                $buffer = static::$_controllersActions[$this->_controllerClassName];
+            } else {
+                // Получаем все экшены контроллера
+                $reflection = new \ReflectionClass($this->_controllerClassName);
+                $methods = $reflection->getMethods(\ReflectionMethod::IS_PUBLIC);
+                $controller = $reflection->newInstance(Yii::$app->getUniqueId(), null);
+                // Добавляем все подключаемые экшены контроллера
+                $buffer = array_keys($controller->actions());
+                // Перебираем все основные экшены контроллера
+                foreach ($methods as $method) {
+                    /* @var $method \ReflectionMethod */
+                    $name = $method->getName();
+                    if ($name !== 'actions' && substr($name, 0, 6) == 'action') {
+                        $action = substr($name, 6, strlen($name));
+                        $action[0] = strtolower($action[0]);
+                        $buffer[] = $action;
+                    }
                 }
+
+                // Сохраняем экшены контроллера для последующего использования
+                static::$_controllersActions[$this->_controllerClassName] = $buffer;
             }
+
             // Объединяем экшены контроллера с экшенами конфига поведения
-            $this->_stopNames = array_merge($this->_stopNames, array_unique($buffer));
+            $this->_stopNames = array_unique(array_merge($this->_stopNames, $buffer));
         }
     }
 

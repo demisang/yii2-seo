@@ -59,7 +59,7 @@ public function behaviors()
                         return ['category' => $model->category->seo_url];
                     },
                 'languages' => 'ru',
-                'controllerClassName' => 'PostController',
+                'controllerClassName' => '\frontend\controllers\PostController',
                 'uniqueUrlFilter' => function ($query) use ($it) {
                         /* @var $query \yii\db\Query */
                         $query->andWhere(['category_id' => $it->category_id]);
