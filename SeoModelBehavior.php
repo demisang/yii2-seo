@@ -13,7 +13,7 @@ use yii\validators\Validator;
 use yii\widgets\ActiveForm;
 
 /**
- * Поведение для работы с SEO параметрами
+ * Behavior to work with SEO meta options
  *
  * @package demi\seo
  *
@@ -21,63 +21,63 @@ use yii\widgets\ActiveForm;
  */
 class SeoModelBehavior extends Behavior
 {
-    /** @var string Название поля, отвечающего за SEO:url */
+    /** @var string The name of the field responsible for SEO:url */
     private $_urlField;
-    /** @var string|callable Название поля из которого будет формироваться SEO:url, либо функция,
-     * которая вернёт текст, который будет обработан для генерации SEO:url */
+    /** @var string|callable The name of the field which will form the SEO:url, or function,
+     * that returns the text to be processed to generate SEO:url */
     private $_urlProduceField = 'title';
-    /** @var string|callable PHP-выражение, которое формирует поле SEO:title
-     * Пример: function($model, $lang) { return $model->{"title_".$lang} } */
+    /** @var string|callable PHP-expression that generates field SEO:title
+     * example: function($model, $lang) { return $model->{"title_".$lang} } */
     private $_titleProduceFunc;
-    /** @var string|callable PHP-выражение, которое формирует поле SEO:desciption */
+    /** @var string|callable PHP-expression that generates field SEO:desciption */
     private $_descriptionProduceFunc;
-    /** @var string|callable PHP-выражение, которое формирует поле SEO:keywords */
+    /** @var string|callable PHP-expression that generates field SEO:keywords */
     private $_keysProduceFunc;
     /**
-     * @var string Название результирующего поля, куда будут сохранены
-     * в сериализованном виде все SEO-параметры */
+     * @var string The name of the resulting field, which will be stored in a serialized form of all SEO-parameters
+     */
     private $_metaField;
-    /** @var boolean|callable Позволено ли пользователю менять SEO-данные */
+    /** @var boolean|callable Whether to allow the user to change the SEO-data */
     private $_clientChange = false;
-    /** @var integer Максимальная длинна поля SEO: url */
+    /** @var integer The maximum length of the field SEO:url */
     private $_maxUrlLength = 70;
-    /** @var integer Максимальная длинна поля Title */
+    /** @var integer The maximum length of the field Title */
     private $_maxTitleLength = 70;
-    /** @var integer Максимальная длинна поля Description */
+    /** @var integer The maximum length of the field Description */
     private $_maxDescLength = 130;
-    /** @var integer Максимальная длинна поля Keywords */
+    /** @var integer The maximum length of the field Keywords */
     private $_maxKeysLength = 150;
-    /** @var array Запрещённые для использования SEO:url адреса */
+    /** @var array Forbidden for use SEO:url names */
     private $_stopNames = ['create', 'update', 'delete', 'view', 'index'];
-    /** @var string маршрут для создания SEO ссылки, например "post/view" */
+    /** @var string SEO route for creating link, example "post/view" */
     private $_viewRoute = '';
-    /** @var string Название параметра, в котором будет передан SEO:url во создания ссылки
-     * Вот пример места, где используется этот параметр: Url::to(["route", linkTitleParamName=>seo_url]) */
+    /** @var string Parameter name, which will be given SEO:url in the creation of link
+     * Here is an example of a place where this option is used: Url::to(["route", linkTitleParamName=>seo_url]) */
     private $_linkTitleParamName = 'title';
-    /** @var array|callable дополнительные параметры SEO:url для создания ссылки */
+    /** @var array|callable additional parameters SEO:url to create a link */
     private $_additionalLinkParams = [];
-    /** @var array Список языков, на которых должны быть доступны SEO-опции */
+    /** @var array List of languages that should be available to SEO-options */
     private $_languages = [];
-    /** @var string Название класса-контроллера, с которым работает текущая модель.
-     * Необходимо указывать для получения списка экшенов контроллера, чтобы
-     * seo_url не совпадал с существующими экшенами в контроллере */
+    /** @var string The name of a controller class, which operates the current model.
+     * Must be specified for a list of actions of the controller to seo_url
+     * did not coincide with the existing actions in the controller */
     private $_controllerClassName = '';
-    /** @var boolean Необходимо ли использовать только нижний регистр при генерации seo_url */
+    /** @var boolean Is it necessary to use only lowercase when generating seo_url */
     private $_toLowerSeoUrl = true;
-    /** @var Query Дополнительные критерии при проверки seo_url на уникальность */
+    /** @var Query Additional criteria when checking the uniqueness of seo_url */
     private $_uniqueUrlFilter;
-    /** @var string Регулярное выражение для проверки того, что запрос идёт в обход seo_url.
-     * Искомая строка - Yii::app()->request->pathInfo
-     * Если запрос прошёл в обход, тогда будет redirect на правильный viewUrl */
+    /** @var string Regular expression to verify that the request goes to bypass seo_url.
+     * search string - Yii::app()->request->pathInfo
+     * If the request is passed to bypass, then it will redirect to the correct of viewUrl */
     private $_checkSeoUrlRegexp = '';
-    /** @var string Кодировка сайта */
+    /** @var string encoding site */
     private $_encoding = 'UTF-8';
-    /** @var array Конфигурационный массив, который переопределяет вышеуказанные настройки */
+    /** @var array Array configuration that overrides the above settings */
     public $seoConfig = [];
     const TITLE_KEY = 'title';
     const DESC_KEY = 'desc';
     const KEYS_KEY = 'keys';
-    /** @var array Сохранённые экшены контроллеров для занесения их в стоп-лист */
+    /** @var array Saved actions of controllers for SEO:url stop list */
     private static $_controllersActions = [];
 
     public function events()
@@ -94,40 +94,40 @@ class SeoModelBehavior extends Behavior
     {
         parent::attach($owner);
 
-        // Применяем конфигурационные опции
+        // Apply the configuration options
         foreach ($this->seoConfig as $key => $value) {
             $var = '_' . $key;
             $this->$var = $value;
         }
 
         $this->_languages = (array)$this->_languages;
-        // Если не было передано ни одного языка - будем использовать только один системный язык
+        // If there was not passed any language - we use only one system language
         if (!count($this->_languages)) {
             $this->_languages = [Yii::$app->language];
         }
-        // Проверка на то, может ли текущий пользователь видеть и редактировать SEO-данные модели
+        // if the current user can see and edit SEO-data model
         if (is_callable($this->_clientChange)) {
             $this->_clientChange = call_user_func($this->_clientChange, $owner);
         }
 
-        // Если маршрут для создания ссылки на просмотр модели не указан - генерируем
+        // If the route to create a seo url link to view model is not specified - generate it
         if (empty($this->_viewRoute)) {
             $this->_viewRoute = strtolower(basename(get_class($owner))) . '/view';
         }
 
-        // Определяем контроллер и заносим его экшены в стоп-лист
+        // Determine the controller and add it actions to the seo url stop list
         if (!empty($this->_urlField) && !empty($this->_controllerClassName)) {
             if (isset(static::$_controllersActions[$this->_controllerClassName])) {
-                // Получаем ранее определённые экшены контроллера
+                // Obtain the previously defined controller actions
                 $buffer = static::$_controllersActions[$this->_controllerClassName];
             } else {
-                // Получаем все экшены контроллера
+                // Get all actions of controller
                 $reflection = new \ReflectionClass($this->_controllerClassName);
                 $methods = $reflection->getMethods(\ReflectionMethod::IS_PUBLIC);
                 $controller = $reflection->newInstance(Yii::$app->getUniqueId(), null);
-                // Добавляем все подключаемые экшены контроллера
+                // Add all reusable controller actions
                 $buffer = array_keys($controller->actions());
-                // Перебираем все основные экшены контроллера
+                // Loop through all the main controller actions
                 foreach ($methods as $method) {
                     /* @var $method \ReflectionMethod */
                     $name = $method->getName();
@@ -138,11 +138,11 @@ class SeoModelBehavior extends Behavior
                     }
                 }
 
-                // Сохраняем экшены контроллера для последующего использования
+                // Save controller actions for later use
                 static::$_controllersActions[$this->_controllerClassName] = $buffer;
             }
 
-            // Объединяем экшены контроллера с экшенами конфига поведения
+            // Merge controller actions with actions from config behavior
             $this->_stopNames = array_unique(array_merge($this->_stopNames, $buffer));
         }
     }
@@ -152,9 +152,9 @@ class SeoModelBehavior extends Behavior
         $model = $this->owner;
 
         if (!empty($this->_metaField)) {
-            // Перебираем все доступные языки, зачастую он всего один
+            // Loop through all the languages available, it is often only one
             foreach ($this->_languages as $lang) {
-                // Перебираем meta-поля и обрезаем длину meta-срок до установленных значений
+                // Loop through the fields and cut the long strings to set allowed length
                 foreach ($this->getMetaFields() as $meta_param_key => $meta_param_value_generator) {
                     $this->applyMaxLength($meta_param_key, $lang);
                 }
@@ -162,55 +162,55 @@ class SeoModelBehavior extends Behavior
         }
 
         if (empty($this->_urlField)) {
-            // Если не нужна работа с SEO:url, то пропускаем дальнейшую работу
+            // If do not need to work with SEO:url, then skip further work
             return;
         }
 
-        // Добавляем валидатор UNIQUE для SEO:url
+        // Add UNIQUE validator for SEO:url field
         $validator = Validator::createValidator(UniqueValidator::className(), $model, $this->_urlField, [
             'filter' => $this->_uniqueUrlFilter,
         ]);
 
-        // Если SEO:url ещё не заполнен пользователем, то сгенерируем его значение
+        // If SEO: url is not filled by the user, then generate its value
         if (($urlFieldVal = $model->getAttribute($this->_urlField)) !== null) {
             $urlFieldVal = $this->getProduceFieldValue($this->_urlProduceField);
         }
-        // Транслитерируем строку и убираем из неё лишние символы
+        // Transliterated string and remove from it the extra characters
         $seoUrl = $this->getSeoName($urlFieldVal, $this->_maxUrlLength, $this->_toLowerSeoUrl);
 
-        // Если есть совпадение с запрещёнными именами, то к url добавляем нижнее подчёркивание в самый конец
+        // If there is a match with banned names, then add to the url underbar to the end
         while (in_array($seoUrl, $this->_stopNames)) {
             $seoUrl .= '_';
         }
 
         $model->setAttribute($this->_urlField, $seoUrl);
-        // Запускаем первую валидацию
+        // Start the first unique validation
         $validator->validateAttribute($model, $this->_urlField);
 
-        // Запускаем валидацию до 50 раз, пока не будет найдено уникальное SEO:url имя
+        // Run the validation of up to 50 times, until there is a unique SEO:url name
         $i = 0;
         while ($model->hasErrors($this->_urlField)) {
-            // Убираем сообщение о ошибке, полученное в последней валидации
+            // Remove the error message received in the last validation
             $model->clearErrors($this->_urlField);
 
-            // Если 50 раз "в молоко" ушла валидация, значит что-то пошло не так
+            // If failed 50 times, then something went wrong...
             if (++$i > 50) {
-                // Установим SEO:url равным случайному хешу
+                // We establish SEO: url to a random hash
                 $model->setAttribute($this->_urlField, md5(uniqid()));
-                // Закончим "бесконечный" цикл
+                // Finish "infinite" loop
                 break;
             }
 
-            // Добавляем "_" в конец SEO:url
+            // Add "_" at the end of SEO:url
             $newSeoUrl = $model->getAttribute($this->_urlField) . '_';
             $model->setAttribute($this->_urlField, $newSeoUrl);
-            // Запускаем валидатор ещё раз, ведь в предыдущей строке мы изменили значение, добавив постфикс
+            // Run the validator again, because in the previous line, we changed the value of adding a suffix
             $validator->validateAttribute($model, $this->_urlField);
         }
     }
 
     /**
-     * Проверяет максимальную длину meta-строк, и если она превышает лимит - обрезает до максимального значения
+     * Verifies the maximum length of meta-strings, and if it exceeds the limit - cuts to the maximum value
      *
      * @param string $key
      * @param string $lang
@@ -238,36 +238,35 @@ class SeoModelBehavior extends Behavior
         $model = $this->owner;
 
         if (empty($this->_metaField)) {
-            // Если не указано meta-поле, то мы его не будем сохранять
+            // Unless specified meta-field, then we will not save
             return;
         }
 
-        // Проверяем все SEO поля и заполняем их данными: если указаны пользователем - оставляем как есть, если
-        // отсутствует - генерируем
+        // Check all the SEO field and populate them with data, if specified by the user - leave as is, if there is no - generate
         $this->fillMeta();
 
         $meta = $model->getAttribute($this->_metaField);
 
-        // Сохраняем все наши параметры в сериализованном виде
+        // Save all data in a serialized form
         $model->setAttribute($this->_metaField, serialize($meta));
     }
 
     /**
-     * Проверяет заполненность всех SEO:meta полей. При их отсутствии они будут сгенерированы.
+     * Checks completion of all SEO:meta fields. In their absence, they will be generated.
      */
     private function fillMeta()
     {
-        // Перебираем все доступные языки, зачастую он всего один
+        // Loop through all the languages available, it is often only one
         foreach ($this->_languages as $lang) {
-            // Перебираем meta-поля и заполняем их при отсутствии заполненных данных
+            // Loop through the meta-fields and fill them in the absence of complete data
             foreach ($this->getMetaFields() as $meta_params_key => $meta_param_value_generator) {
                 $meta_params_val = $this->getMetaFieldVal($meta_params_key, $lang);
                 if (empty($meta_params_val) && $meta_param_value_generator !== null) {
-                    // Получаем значение из генератора
+                    // Get value from the generator
                     $meta_params_val = $this->getProduceFieldValue($meta_param_value_generator, $lang);
                     $this->setMetaFieldVal($meta_params_key, $lang, $this->normalizeStr($meta_params_val));
                 }
-                // Проверим, что длина строки в норме
+                // We verify that the length of the string in the normal
                 $this->applyMaxLength($meta_params_key, $lang);
             }
         }
@@ -278,7 +277,7 @@ class SeoModelBehavior extends Behavior
         $model = $this->owner;
 
         if (!empty($this->_metaField)) {
-            // Распаковываем meta-параметры
+            // Unpack meta-params
             $meta = @unserialize($model->getAttribute($this->_metaField));
             if (!is_array($meta)) {
                 $meta = [];
@@ -289,7 +288,7 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Возвращает массив meta-полей. В качестве значения идёт callback функция
+     * Returns an array of meta-fields. As the value goes callback function
      *
      * @return callable[]
      */
@@ -303,10 +302,10 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Возвращает значение $key из SEO:meta для указанного $lang языка
+     * Returns the value of the $key SEO:meta for the specified $lang language
      *
-     * @param string $key  ключ TITLE_KEY, DESC_KEY или KEYS_KEY
-     * @param string $lang язык
+     * @param string $key  key TITLE_KEY, DESC_KEY or KEYS_KEY
+     * @param string $lang language
      *
      * @return string|null
      */
@@ -319,11 +318,11 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Устанавливает значение $key в SEO:meta на указанном $lang языке
+     * Sets the value of $key in SEO:meta on the specified $lang language
      *
-     * @param string $key   ключ TITLE_KEY, DESC_KEY или KEYS_KEY
-     * @param string $lang  язык
-     * @param string $value значение
+     * @param string $key   key TITLE_KEY, DESC_KEY or KEYS_KEY
+     * @param string $lang  language
+     * @param string $value field value
      */
     private function setMetaFieldVal($key, $lang, $value)
     {
@@ -340,9 +339,9 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Возвращает метаданные этой модели
+     * Returns the metadata for this model
      *
-     * @param string|null $lang язык, для которого требуются meta-данные
+     * @param string|null $lang language, which requires meta-data
      *
      * @return array
      */
@@ -355,17 +354,17 @@ class SeoModelBehavior extends Behavior
         $buffer = [];
 
         if (!empty($this->_metaField)) {
-            // Проверяем, чтобы все meta-поля были заполнены значениями
+            // Check that all meta-fields were filled with the values
             $this->fillMeta();
         }
 
-        // Если meta хранится в model, то вернём значение из модели, иначе будем генерировать на лету
+        // If meta stored in a model, then refund the value of the model fields, otherwise will generate data on the fly
         $getValMethodName = !empty($this->_metaField) ? 'getMetaFieldVal' : 'getProduceFieldValue';
 
         foreach ($this->getMetaFields() as $meta_params_key => $meta_param_value_generator) {
-            // Выбираем какой параметр передадим в функцию получения значения: название поля или функцию-генератор
+            // Choosing what parameters are passed to the function get the value: the name of the field or function-generator
             $getValMethodParam = !empty($this->_metaField) ? $meta_params_key : $meta_param_value_generator;
-            // Непосредственное получение значения, либо из meta-поля модели, либо сгенерированноеы
+            // Directly receiving the value of any meta-field of the model or generate it
             $buffer[$meta_params_key] = $this->$getValMethodName($getValMethodParam, $lang);
         }
 
@@ -374,7 +373,7 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Возвращаем этот экземпляр behavior`а
+     * Return instance of current behavior
      *
      * @return SeoModelBehavior $this
      */
@@ -384,7 +383,7 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Нормализует строку, подготоваливает её для записи в БД
+     * Normalize string, prepares it for recording in the database
      *
      * @param string $str
      *
@@ -392,7 +391,7 @@ class SeoModelBehavior extends Behavior
      */
     private function normalizeStr($str)
     {
-        // Заменяем все пробелы, переносы строк и табы на один пробел
+        // Replace all spaces, line breaks and tabs with a single space char
         $str = preg_replace('/[\s]+/iu', ' ', $str);
         $str = trim(strip_tags($str));
 
@@ -400,30 +399,30 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Вовзвращает URL на страницу просмотра модели-владельца
+     * Returns the URL to the page viewing for current model-owner
      *
-     * @param string $title  SEO:title для url, использовать только если ссылка генерируется не из модели, а произвольно
-     * @param string $anchor #Якорь, который добвится к url, а $title можно указать как NULL
-     * @param boolean $abs   Является ли эта ссылка абсолютной, а $title и $anchor можно указать как NULL
+     * @param string $title  SEO:title for the url, use only if the reference is not generated from the model, and externally
+     * @param string $anchor #Anchor, which is added to the url ($title can be set to NULL)
+     * @param boolean $abs   Need a absolute link ($title and $anchor can be set to NULL)
      *
      * @return string
      */
     public function getViewUrl($title = null, $anchor = null, $abs = false)
     {
-        // Если дополнительные параметры ссылки должны генерироваться - делаем генерацию
+        // If additional link parameters should be generated - do generate
         if (is_callable($this->_additionalLinkParams)) {
             $this->_additionalLinkParams = call_user_func($this->_additionalLinkParams, $this->owner);
         }
 
-        // Если модель не имеет SEO:url, то в качестве значения этого поля будет использоваться ID модели
+        // If the model does not have SEO: url, then the value of this field will be used by the Model ID
         if (empty($this->_urlField) && empty($title)) {
             $title = $this->owner->getPrimaryKey();
         }
 
-        // Добавляем параметр, который отвечает за отображение SEO:url
+        // Add the parameter that is responsible for displaying SEO:url
         $params = [$this->_linkTitleParamName => !empty($title) ? $title : $this->owner->getAttribute($this->_urlField)];
 
-        // Добавляем якорь
+        // Adding anchor
         if (!empty($anchor)) {
             $params['#'] = $anchor;
         }
@@ -432,10 +431,10 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Вовзвращает абсолютный URL на страницу просмотра модели-владельца
+     * Returns the absolute URL to the page view model-owner
      *
-     * @param string $title  SEO:title для url, использовать только если ссылка генерируется не из модели, а произвольно
-     * @param string $anchor Якорь, который добвится к url, а $title можно указать как NULL
+     * @param string $title  SEO:title for the url, use only if the reference is not generated from the model, and externally
+     * @param string $anchor Якорь, который добвится к url, а $title можно указать как NULL#Anchor, which is added to the url ($title can be set to NULL)
      *
      * @return string
      */
@@ -445,13 +444,13 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Рендерим SEO поля для формы
+     * Render the SEO field for a form
      *
      * @param ActiveForm $form
      */
     public function renderFormSeoFields($form = null)
     {
-        // Если параметры нельзя редактировать вручную - значит нечего отображать их в форме
+        // If the parameters can not be edited manually - it means nothing to display them in the form of
         if (!$this->_clientChange) {
             return;
         }
@@ -489,7 +488,7 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Возвращает сгенерированное значение для meta-полей
+     * Returns the generated value for the meta-fields
      *
      * @param callable|string $produceFunc
      * @param string $lang
@@ -507,8 +506,8 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Проверяет, чтобы только по seo_url осуществлялся просмотр данной модели
-     * @return boolean true если всё хорошо, иначе происходит редирект 301 на правильный URL
+     * Verifies that only correct seo_url is used for current url
+     * @return boolean true if all is well, otherwise occurs 301 redirect to the correct URL
      */
     public function checkSeoUrl()
     {
@@ -521,7 +520,7 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Возвращает пригодное для использования SEO имя
+     * Returns usable SEO name
      *
      * @param string $title
      * @param int $maxLength
@@ -536,9 +535,9 @@ class SeoModelBehavior extends Behavior
             "А" => "A", "Б" => "B", "В" => "V", "Г" => "G", "Д" => "D", "Е" => "E", "Ё" => "Yo", "Ж" => "J", "З" => "Z", "И" => "I", "Й" => "I", "К" => "K", "Л" => "L", "М" => "M", "Н" => "N", "О" => "O", "П" => "P", "Р" => "R", "С" => "S", "Т" => "T", "У" => "Y", "Ф" => "F", "Х" => "H", "Ц" => "C", "Ч" => "Ch", "Ш" => "Sh", "Щ" => "Sh", "Ы" => "I", "Э" => "E", "Ю" => "U", "Я" => "Ya",
             "ь" => "", "Ь" => "", "ъ" => "", "Ъ" => ""
         );
-        // Заменяем непригодные символы на чёрточки
+        // Replace the unusable characters on the dashes
         $title = preg_replace('/[^a-zа-яё\d_-]+/isu', '-', $title);
-        // Убираем чёрточки из начала и конца строки
+        // Remove dashes from the beginning and end of the line
         $title = trim($title, '-');
         $title = strtr($title, $trans);
         if ($to_lower) {
@@ -548,7 +547,7 @@ class SeoModelBehavior extends Behavior
             $title = mb_substr($title, 0, $maxLength, $this->_encoding);
         }
 
-        // Возвращаем пригодную строку, где русские символы переведены в транслит
+        // Return usable string
         return $title;
     }
 }
