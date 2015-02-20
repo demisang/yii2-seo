@@ -40,7 +40,7 @@ public function behaviors()
 
     return [
         'seo' => [
-            'class' => \demi\seo\SeoModelBehavior::className(),
+            'class' => 'demi\seo\SeoModelBehavior',
             'seoConfig' => [
                 'urlField' => 'seo_url',
                 'urlProduceField' => 'title',
