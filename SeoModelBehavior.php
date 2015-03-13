@@ -38,7 +38,7 @@ class SeoModelBehavior extends Behavior
      */
     private $_metaField;
     /** @var boolean|callable Whether to allow the user to change the SEO-data */
-    private $_clientChange = false;
+    private $_clientChange = true;
     /** @var integer The maximum length of the field SEO:url */
     private $_maxUrlLength = 70;
     /** @var integer The maximum length of the field Title */
