@@ -172,7 +172,8 @@ class SeoModelBehavior extends Behavior
         ]);
 
         // If SEO: url is not filled by the user, then generate its value
-        if (($urlFieldVal = $model->getAttribute($this->_urlField)) !== null) {
+        $urlFieldVal = trim((string)$model->getAttribute($this->_urlField));
+        if ($urlFieldVal === '') {
             $urlFieldVal = $this->getProduceFieldValue($this->_urlProduceField);
         }
         // Transliterated string and remove from it the extra characters
