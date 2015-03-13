@@ -460,7 +460,7 @@ class SeoModelBehavior extends Behavior
         echo '<hr />';
 
         if ($form instanceof ActiveForm) {
-            $form->field($model, $this->_urlField);
+            echo $form->field($model, $this->_urlField)->textInput();
         } else {
             echo '<div class="seo_row">';
             echo Html::activeLabel($model, $this->_urlField);
@@ -472,13 +472,17 @@ class SeoModelBehavior extends Behavior
         foreach ($this->_languages as $lang) {
             foreach ($this->getMetaFields() as $meta_field_key => $meta_field_generator) {
                 $attr = $this->_metaField . "[{$meta_field_key}_{$lang}]";
+                $label = 'SEO: ' . $meta_field_key;
+                if (count($this->_languages) > 1) {
+                    $label .= ' ' . strtoupper($lang);
+                }
                 if ($form instanceof ActiveForm) {
-                    $input = $meta_field_key == self::DESC_KEY ? 'textarea' : 'field';
-                    echo $form->$input($model, $attr);
+                    $input = $meta_field_key == self::DESC_KEY ? 'textarea' : 'textInput';
+                    echo $form->field($model, $attr)->label($label)->$input();
                 } else {
                     $input = $meta_field_key == self::DESC_KEY ? 'activeTextarea' : 'activeTextInput';
                     echo '<div class="seo_row">';
-                    echo Html::activeLabel($model, $attr);
+                    echo Html::activeLabel($model, $attr, ['label' => $label]);
                     echo Html::$input($model, $attr);
                     echo Html::error($model, $attr);
                     echo "</div>\n";

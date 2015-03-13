@@ -70,6 +70,18 @@ public function behaviors()
 }
 ```
 
+PHPdoc for model:
+```php
+/**
+ * @property array $seoData
+ * @method array getSeoData($lang = null) Metadata for this model
+ * @method \demi\seo\SeoModelBehavior getSeoBehavior()
+ * @property array $viewUrl
+ * @method array getViewUrl() URL to material view page
+ * @property array $absoluteViewUrl
+ * @method array getAbsoluteViewUrl() Absolute URL to material view page
+ */
+```
 In main layout:
 ```php
 <head>
@@ -106,5 +118,5 @@ $abs_url = $model->absoluteViewUrl;
 
 Render SEO:url and SEO:meta fields in the "_form.php" file:
 ```php
-$model->renderFormSeoFields($active_form_or_void);
+<?php $model->renderFormSeoFields($ActiveForm_or_void); ?>
 ```
