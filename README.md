@@ -47,7 +47,7 @@ public function behaviors()
                 'titleProduceFunc' => 'title',
                 'descriptionProduceFunc' => 'short_desc',
                 'keysProduceFunc' => function ($model) {
-                        /* @var $model static|\yii\db\ActiveRecord */
+                        /* @var $model self|\yii\db\ActiveRecord */
                         return $model->title . ', tag1, tag2';
                     },
                 'metaField' => 'seo_meta',
@@ -55,7 +55,7 @@ public function behaviors()
                 'viewRoute' => '/post/view',
                 'linkTitleParamName' => 'title',
                 'additionalLinkParams' => function ($model) {
-                        /* @var $model static|\yii\db\ActiveRecord */
+                        /* @var $model self|\yii\db\ActiveRecord */
                         return ['category' => $model->category->seo_url];
                     },
                 'languages' => 'ru',
