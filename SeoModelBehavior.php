@@ -183,7 +183,7 @@ class SeoModelBehavior extends Behavior
             $seoUrl .= '_';
         }
 
-        $model->setAttribute($this->_urlField, $seoUrl);
+        $model->{$this->_urlField} = $seoUrl;
         // Start the first unique validation
         $validator->validateAttribute($model, $this->_urlField);
 
@@ -196,14 +196,14 @@ class SeoModelBehavior extends Behavior
             // If failed 50 times, then something went wrong...
             if (++$i > 50) {
                 // We establish SEO: url to a random hash
-                $model->setAttribute($this->_urlField, md5(uniqid()));
+                $model->{$this->_urlField} = md5(uniqid());
                 // Finish "infinite" loop
                 break;
             }
 
             // Add "_" at the end of SEO:url
             $newSeoUrl = $model->{$this->_urlField . '_'};
-            $model->setAttribute($this->_urlField, $newSeoUrl);
+            $model->{$this->_urlField} = $newSeoUrl;
             // Run the validator again, because in the previous line, we changed the value of adding a suffix
             $validator->validateAttribute($model, $this->_urlField);
         }
@@ -249,7 +249,7 @@ class SeoModelBehavior extends Behavior
         $meta = $model->{$this->_metaField};
 
         // Save all data in a serialized form
-        $model->setAttribute($this->_metaField, serialize($meta));
+        $model->{$this->_metaField} = serialize($meta);
     }
 
     /**
@@ -284,7 +284,7 @@ class SeoModelBehavior extends Behavior
                 $meta = [];
             }
 
-            $model->setAttribute($this->_metaField, $meta);
+            $model->{$this->_metaField} = $meta;
         }
     }
 
@@ -336,7 +336,7 @@ class SeoModelBehavior extends Behavior
 
         $meta[$param] = (string)$value;
 
-        $model->setAttribute($this->_metaField, $meta);
+        $model->{$this->_metaField} = $meta;
     }
 
     /**
@@ -502,12 +502,24 @@ class SeoModelBehavior extends Behavior
      */
     private function getProduceFieldValue($produceFunc, $lang = null)
     {
+        // Save current site language
+        $originalLanguage = Yii::$app->language;
+        // Change site language to $lang
+        if (!empty($lang)) {
+            Yii::$app->language = $lang;
+        }
+
         $model = $this->owner;
         if (is_callable($produceFunc)) {
-            return (string)call_user_func($produceFunc, $model, $lang);
+            $value = (string)call_user_func($produceFunc, $model, $lang);
         } else {
-            return (string)$model->{$produceFunc};
+            $value = (string)$model->{$produceFunc};
         }
+
+        // Restore original site language
+        Yii::$app->language = $originalLanguage;
+
+        return $value;
     }
 
     /**
