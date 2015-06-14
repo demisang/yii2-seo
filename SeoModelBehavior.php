@@ -171,7 +171,7 @@ class SeoModelBehavior extends Behavior
         ]);
 
         // If SEO: url is not filled by the user, then generate its value
-        $urlFieldVal = trim((string)$model->getAttribute($this->_urlField));
+        $urlFieldVal = trim((string)$model->{$this->_urlField});
         if ($urlFieldVal === '') {
             $urlFieldVal = $this->getProduceFieldValue($this->_urlProduceField);
         }
@@ -202,7 +202,7 @@ class SeoModelBehavior extends Behavior
             }
 
             // Add "_" at the end of SEO:url
-            $newSeoUrl = $model->getAttribute($this->_urlField) . '_';
+            $newSeoUrl = $model->{$this->_urlField . '_'};
             $model->setAttribute($this->_urlField, $newSeoUrl);
             // Run the validator again, because in the previous line, we changed the value of adding a suffix
             $validator->validateAttribute($model, $this->_urlField);
@@ -246,7 +246,7 @@ class SeoModelBehavior extends Behavior
         // Check all the SEO field and populate them with data, if specified by the user - leave as is, if there is no - generate
         $this->fillMeta();
 
-        $meta = $model->getAttribute($this->_metaField);
+        $meta = $model->{$this->_metaField};
 
         // Save all data in a serialized form
         $model->setAttribute($this->_metaField, serialize($meta));
@@ -279,7 +279,7 @@ class SeoModelBehavior extends Behavior
 
         if (!empty($this->_metaField)) {
             // Unpack meta-params
-            $meta = @unserialize($model->getAttribute($this->_metaField));
+            $meta = @unserialize($model->{$this->_metaField});
             if (!is_array($meta)) {
                 $meta = [];
             }
@@ -313,7 +313,7 @@ class SeoModelBehavior extends Behavior
     private function getMetaFieldVal($key, $lang)
     {
         $param = $key . '_' . $lang;
-        $meta = $this->owner->getAttribute($this->_metaField);
+        $meta = $this->owner->{$this->_metaField};
 
         return is_array($meta) && isset($meta[$param]) ? $meta[$param] : null;
     }
@@ -329,7 +329,7 @@ class SeoModelBehavior extends Behavior
     {
         $model = $this->owner;
         $param = $key . '_' . $lang;
-        $meta = $model->getAttribute($this->_metaField);
+        $meta = $model->{$this->_metaField};
         if (!is_array($meta)) {
             $meta = [];
         }
@@ -421,7 +421,7 @@ class SeoModelBehavior extends Behavior
         }
 
         // Add the parameter that is responsible for displaying SEO:url
-        $params = [$this->_linkTitleParamName => !empty($title) ? $title : $this->owner->getAttribute($this->_urlField)];
+        $params = [$this->_linkTitleParamName => !empty($title) ? $title : $this->owner->{$this->_urlField}];
 
         // Adding anchor
         if (!empty($anchor)) {
@@ -506,7 +506,7 @@ class SeoModelBehavior extends Behavior
         if (is_callable($produceFunc)) {
             return (string)call_user_func($produceFunc, $model, $lang);
         } else {
-            return (string)$model->getAttribute($produceFunc);
+            return (string)$model->{$produceFunc};
         }
     }
 
@@ -535,11 +535,11 @@ class SeoModelBehavior extends Behavior
      */
     private function getSeoName($title, $maxLength = 255, $to_lower = true)
     {
-        $trans = array(
+        $trans = [
             "а" => "a", "б" => "b", "в" => "v", "г" => "g", "д" => "d", "е" => "e", "ё" => "yo", "ж" => "j", "з" => "z", "и" => "i", "й" => "i", "к" => "k", "л" => "l", "м" => "m", "н" => "n", "о" => "o", "п" => "p", "р" => "r", "с" => "s", "т" => "t", "у" => "y", "ф" => "f", "х" => "h", "ц" => "c", "ч" => "ch", "ш" => "sh", "щ" => "sh", "ы" => "i", "э" => "e", "ю" => "u", "я" => "ya",
             "А" => "A", "Б" => "B", "В" => "V", "Г" => "G", "Д" => "D", "Е" => "E", "Ё" => "Yo", "Ж" => "J", "З" => "Z", "И" => "I", "Й" => "I", "К" => "K", "Л" => "L", "М" => "M", "Н" => "N", "О" => "O", "П" => "P", "Р" => "R", "С" => "S", "Т" => "T", "У" => "Y", "Ф" => "F", "Х" => "H", "Ц" => "C", "Ч" => "Ch", "Ш" => "Sh", "Щ" => "Sh", "Ы" => "I", "Э" => "E", "Ю" => "U", "Я" => "Ya",
             "ь" => "", "Ь" => "", "ъ" => "", "Ъ" => ""
-        );
+        ];
         // Replace the unusable characters on the dashes
         $title = preg_replace('/[^a-zа-яё\d_-]+/isu', '-', $title);
         // Remove dashes from the beginning and end of the line
