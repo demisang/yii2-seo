@@ -202,7 +202,7 @@ class SeoModelBehavior extends Behavior
             }
 
             // Add "_" at the end of SEO:url
-            $newSeoUrl = $model->{$this->_urlField . '_'};
+            $newSeoUrl = $model->{$this->_urlField} . '_';
             $model->{$this->_urlField} = $newSeoUrl;
             // Run the validator again, because in the previous line, we changed the value of adding a suffix
             $validator->validateAttribute($model, $this->_urlField);
