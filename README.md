@@ -4,19 +4,11 @@ Library for working with SEO parameters of models
 
 Installation
 ------------
-Add to composer.json in your project
-```json
-{
-	"require":
-	{
-  		"demi/seo": "dev-master"
-	}
-}
-```
-then run command
+Run
 ```code
-php composer.phar update
+composer require "demi/seo" "~1.0"
 ```
+
 Configuration
 -------------
 frontend/config/main.php

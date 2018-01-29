@@ -1,6 +1,9 @@
 <?php
 /**
- * Поведение для работы с SEO параметрами во view
+ * @copyright Copyright (c) 2018 Ivan Orlov
+ * @license   https://github.com/demisang/yii2-seo/blob/master/LICENSE
+ * @link      https://github.com/demisang/yii2-seo#readme
+ * @author    Ivan Orlov <gnasimed@gmail.com>
  */
 
 namespace demi\seo;
