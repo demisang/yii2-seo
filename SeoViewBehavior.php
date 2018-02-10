@@ -14,12 +14,29 @@ use yii\web\View;
 use yii\helpers\Html;
 
 /**
- * Управление установкой SEO-параметров для страницы
- *
- * @package demi\seo
+ * Manage page seo-params
  */
 class SeoViewBehavior extends Behavior
 {
+    /**
+     * <title> tag content template
+     *
+     * @var string
+     */
+    public $titleTemplate = '{title} - {appName}';
+    /**
+     * <meta name="description"> tag content value template
+     *
+     * @var string
+     */
+    public $descriptionTemplate = '{description}';
+    /**
+     * <meta name="keywords"> tag content value template
+     *
+     * @var string
+     */
+    public $keywordsTemplate = '{keywords}';
+
     private $_page_title = '';
     private $_meta_description = '';
     private $_meta_keywords = '';
@@ -37,14 +54,14 @@ class SeoViewBehavior extends Behavior
     }
 
     /**
-     * Установка meta параметров страницы
+     * Set page meta
      *
-     * @param mixed $title 1) массив:
-     *                     array("title"=>"Page Title", "desc"=>"Page Descriptions", "keys"=>"Page, Keywords")
-     *                     2) SeoModelBehavior
-     *                     3) Строка для title страницы
-     * @param string $desc Meta description
-     * @param mixed $keys  Meta keywords, строка либо массив ключевиков
+     * @param string|SeoModelBehavior $title 1) array:
+     *                                       ["title"=>"Page Title", "desc"=>"Page Descriptions", "keys"=>"Page, Keywords"]
+     *                                       2) SeoModelBehavior
+     *                                       3) Page title string
+     * @param string $desc                   Meta description string
+     * @param string|string[] $keys          Meta keywords: string or keywords array
      *
      * @return static
      */
@@ -52,7 +69,7 @@ class SeoViewBehavior extends Behavior
     {
         $data = $title;
         if ($title instanceof SeoModelBehavior) {
-            // Вытаскиваем данные из модельки, в которой есть SeoModelBehavior
+            // Get data from model with SeoModelBehavior
             $meta = $title->getSeoData();
             $data = [
                 'title' => $meta[SeoModelBehavior::TITLE_KEY],
@@ -79,25 +96,76 @@ class SeoViewBehavior extends Behavior
         return $this;
     }
 
+    /**
+     * Print tags:
+     * <title>
+     *
+     * Register meta tags:
+     * <meta name="description">
+     * <meta name="keywords">
+     *
+     * and optional:
+     * <meta name="robots" content="noindex, [follow|nofollow]">
+     */
     public function renderMetaTags()
     {
         /* @var $view View */
         $view = $this->owner;
-        $title = !empty($this->_page_title) ? $this->_page_title . ' - ' . Yii::$app->name : Yii::$app->name;
+
+        if ($this->_page_title) {
+            // If title set - use it
+            $title = $this->_page_title;
+        } elseif ($view->title) {
+            // Use default Yii title value
+            $title = $view->title;
+        }
+
+        if (!empty($title)) {
+            // Make title by template
+            $title = strtr($this->titleTemplate, [
+                '{title}' => $title,
+                '{appName}' => Yii::$app->name,
+            ]);
+        } else {
+            // Otherwise by default use App name for title
+            $title = Yii::$app->name;
+        }
+
+        // Print <title> tag
         echo '<title>' . Html::encode($this->normalizeStr($title)) . '</title>' . PHP_EOL;
+
+        // Register <meta name="description"> tag
         if (!empty($this->_meta_description)) {
-            $view->registerMetaTag(['name' => 'description', 'content' => Html::encode($this->normalizeStr($this->_meta_description))]);
+            $description = str_replace('{description}', $this->_meta_description, $this->descriptionTemplate);
+            $view->registerMetaTag(['name' => 'description', 'content' => Html::encode($this->normalizeStr($description))]);
         }
+
+        // Register <meta name="keywords"> tag
         if (!empty($this->_meta_keywords)) {
-            $view->registerMetaTag(['name' => 'keywords', 'content' => Html::encode($this->normalizeStr($this->_meta_keywords))]);
+            $keywords = str_replace('{keywords}', $this->_meta_keywords, $this->keywordsTemplate);
+            $view->registerMetaTag(['name' => 'keywords', 'content' => Html::encode($this->normalizeStr($keywords))]);
         }
+
+        // Register <meta name="robots"> tag
         if (!empty($this->_noIndex)) {
             $view->registerMetaTag(['name' => 'robots', 'content' => $this->_noIndex]);
         }
     }
 
     /**
-     * Нормализует строку, подготоваливает её для отображения
+     * Setup noindex <link> tag for current page
+     *
+     * @param boolean $follow Allow search engine links following?
+     */
+    public function noIndex($follow = true)
+    {
+        $content = 'noindex, ' . ($follow ? 'follow' : 'nofollow');
+
+        $this->_noIndex = $content;
+    }
+
+    /**
+     * String normalizer
      *
      * @param string $str
      *
@@ -105,24 +173,11 @@ class SeoViewBehavior extends Behavior
      */
     private function normalizeStr($str)
     {
-        // Удаляем теги из текста
+        // Remove html-tags
         $str = strip_tags($str);
-        // Заменяем все пробелы, переносы строк и табы на один пробел
+        // Replace 2+ spaces to one
         $str = trim(preg_replace('/[\s]+/is', ' ', $str));
 
         return $str;
-    }
-
-    /**
-     * Установить meta-тег noindex для текущей страницы
-     *
-     * @param boolean $follow Разрешить поисковикам следовать по ссылкам? Если FALSE,
-     *                        то в мета-тег будет добавлено nofollow
-     */
-    public function noIndex($follow = true)
-    {
-        $content = 'noindex, ' . ($follow ? 'follow' : 'nofollow');
-
-        $this->_noIndex = $content;
     }
 }
