@@ -165,6 +165,36 @@ class SeoViewBehavior extends Behavior
     }
 
     /**
+     * Page title
+     *
+     * @return string
+     */
+    public function getTitle()
+    {
+        return $this->_page_title;
+    }
+
+    /**
+     * Page description
+     *
+     * @return string
+     */
+    public function getDescription()
+    {
+        return $this->_meta_description;
+    }
+
+    /**
+     * Page keywords
+     *
+     * @return string
+     */
+    public function getKeywords()
+    {
+        return $this->_meta_keywords;
+    }
+
+    /**
      * String normalizer
      *
      * @param string $str
