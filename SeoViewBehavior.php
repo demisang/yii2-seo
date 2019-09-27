@@ -15,6 +15,8 @@ use yii\helpers\Html;
 
 /**
  * Manage page seo-params
+ *
+ * @property View $owner
  */
 class SeoViewBehavior extends Behavior
 {
@@ -84,7 +86,7 @@ class SeoViewBehavior extends Behavior
             );
         }
         if (isset($data['title'])) {
-            $this->_page_title = $this->normalizeStr($data['title']);
+            $this->_page_title = $this->owner->title = $this->normalizeStr($data['title']);
         }
         if (isset($data['desc'])) {
             $this->_meta_description = $this->normalizeStr($data['desc']);
@@ -109,7 +111,6 @@ class SeoViewBehavior extends Behavior
      */
     public function renderMetaTags()
     {
-        /* @var $view View */
         $view = $this->owner;
 
         if ($this->_page_title) {
