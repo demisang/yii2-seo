@@ -67,7 +67,7 @@ public function behaviors()
                 // attribute name or anonymous function
                 'descriptionProduceFunc' => 'short_desc',
                 // attribute name or anonymous function
-                'keysProduceFunc' => function (self $model) {
+                'keysProduceFunc' => static function (self $model) {
                     return $model->title . ', tag1, tag2';
                 },
                 // when user can manage model seo-fields (anonymous function possible) 
@@ -77,12 +77,12 @@ public function behaviors()
                 // param for Url::to(<viewRoute>, ['title' => $model->seo_url])
                 'linkTitleParamName' => 'title',
                 // only anon-function returns array of additional link params with values
-                'additionalLinkParams' => function (self $model) {
+                'additionalLinkParams' => static function (self $model) {
                     // Url::to(<viewRoute>, ['title' => $model->seo_url, 'category' => $model->category->seo_url])
                     return ['category' => $model->category->seo_url];
                 },
                 // if you model have some unique condition
-                'uniqueUrlFilter' => function (\yii\db\Query $query) {
+                'uniqueUrlFilter' => function (\yii\db\ActiveQuery $query) {
                     $query->andWhere(['category_id' => $this->category_id]);
                 },
                 // if array - seo_meta will have possible to internationalization 
@@ -91,6 +91,7 @@ public function behaviors()
                 // For example: if you create model with seo_url = 'delete' you can't open model by url '/post/delete',
                 // if this option enabled, then seo_url will be 'delete_' and url: '/post/delete_' 
                 'controllerClassName' => '\frontend\controllers\PostController',
+                // @see [\demi\seo\SeoModelBehavior] for more properties
             ],
         ],
     ];

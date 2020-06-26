@@ -39,10 +39,10 @@ class SeoViewBehavior extends Behavior
      */
     public $keywordsTemplate = '{keywords}';
 
-    private $_page_title = '';
-    private $_meta_description = '';
-    private $_meta_keywords = '';
-    private $_noIndex = false;
+    protected $_page_title = '';
+    protected $_meta_description = '';
+    protected $_meta_keywords = '';
+    protected $_noIndex = false;
 
     public function events()
     {
@@ -202,7 +202,7 @@ class SeoViewBehavior extends Behavior
      *
      * @return string
      */
-    private function normalizeStr($str)
+    protected function normalizeStr($str)
     {
         // Remove html-tags
         $str = strip_tags($str);

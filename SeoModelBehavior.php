@@ -28,64 +28,77 @@ use yii\widgets\ActiveForm;
 class SeoModelBehavior extends Behavior
 {
     /** @var string The name of the field responsible for SEO:url */
-    private $_urlField;
+    protected $_urlField;
     /** @var string|callable The name of the field which will form the SEO:url, or function,
      * that returns the text to be processed to generate SEO:url */
-    private $_urlProduceField = 'title';
+    protected $_urlProduceField = 'title';
     /** @var string|callable PHP-expression that generates field SEO:title
      * example: function($model, $lang) { return $model->{"title_".$lang} } */
-    private $_titleProduceFunc;
+    protected $_titleProduceFunc;
     /** @var string|callable PHP-expression that generates field SEO:desciption */
-    private $_descriptionProduceFunc;
+    protected $_descriptionProduceFunc;
     /** @var string|callable PHP-expression that generates field SEO:keywords */
-    private $_keysProduceFunc;
+    protected $_keysProduceFunc;
     /**
      * @var string The name of the resulting field, which will be stored in a serialized form of all SEO-parameters
      */
-    private $_metaField;
+    protected $_metaField;
     /** @var boolean|callable Whether to allow the user to change the SEO-data */
-    private $_clientChange = true;
+    protected $_clientChange = true;
     /** @var integer The maximum length of the field SEO:url */
-    private $_maxUrlLength = 70;
+    protected $_maxUrlLength = 70;
     /** @var integer The maximum length of the field Title */
-    private $_maxTitleLength = 70;
+    protected $_maxTitleLength = 70;
     /** @var integer The maximum length of the field Description */
-    private $_maxDescLength = 130;
+    protected $_maxDescLength = 130;
     /** @var integer The maximum length of the field Keywords */
-    private $_maxKeysLength = 150;
+    protected $_maxKeysLength = 150;
     /** @var array Forbidden for use SEO:url names */
-    private $_stopNames = ['create', 'update', 'delete', 'view', 'index'];
+    protected $_stopNames = ['create', 'update', 'delete', 'view', 'index'];
     /** @var string SEO route for creating link, example "post/view" */
-    private $_viewRoute = '';
+    protected $_viewRoute = '';
     /** @var string Parameter name, which will be given SEO:url in the creation of link
      * Here is an example of a place where this option is used: Url::to(["route", linkTitleParamName=>seo_url]) */
-    private $_linkTitleParamName = 'title';
+    protected $_linkTitleParamName = 'title';
     /** @var array|callable additional parameters SEO:url to create a link */
-    private $_additionalLinkParams = [];
+    protected $_additionalLinkParams = [];
     /** @var array List of languages that should be available to SEO-options */
-    private $_languages = [];
+    protected $_languages = [];
     /** @var string The name of a controller class, which operates the current model.
      * Must be specified for a list of actions of the controller to seo_url
      * did not coincide with the existing actions in the controller */
-    private $_controllerClassName = '';
+    protected $_controllerClassName = '';
     /** @var boolean Is it necessary to use only lowercase when generating seo_url */
-    private $_toLowerSeoUrl = true;
+    protected $_toLowerSeoUrl = true;
     /** @var Query Additional criteria when checking the uniqueness of seo_url */
-    private $_uniqueUrlFilter;
+    protected $_uniqueUrlFilter;
     /** @var string Regular expression to verify that the request goes to bypass seo_url.
      * search string - Yii::app()->request->pathInfo
      * If the request is passed to bypass, then it will redirect to the correct of viewUrl */
-    private $_checkSeoUrlRegexp = '';
-    /** @var string encoding site */
-    private $_encoding = 'UTF-8';
+    protected $_checkSeoUrlRegexp = '';
+    /** @var string Encoding */
+    protected $_encoding;
+    /** @var array ['®' => 'trademark', ...] */
+    protected $_transliterationList;
+    /** @var array Replace invalid symbols */
+    protected $_replacementRegex = '/[^a-zа-яё\d_-]+/iu';
+    /** @var string Replacement char */
+    protected $_replacementChar = '-';
+    /** @var string Extra char (used for appending string when non-unique) */
+    protected $_extraChar = '_';
     /** @var array Array configuration that overrides the above settings */
     public $seoConfig = [];
+
     const TITLE_KEY = 'title';
     const DESC_KEY = 'desc';
     const KEYS_KEY = 'keys';
-    /** @var array Saved actions of controllers for SEO:url stop list */
-    private static $_controllersActions = [];
 
+    /** @var array Saved actions of controllers for SEO:url stop list */
+    protected static $_controllersActions = [];
+
+    /**
+     * {@inheritdoc}
+     */
     public function events()
     {
         return [
@@ -95,6 +108,9 @@ class SeoModelBehavior extends Behavior
         ];
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function attach($owner)
     {
         parent::attach($owner);
@@ -152,6 +168,9 @@ class SeoModelBehavior extends Behavior
         }
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function beforeValidate()
     {
         $model = $this->owner;
@@ -186,7 +205,7 @@ class SeoModelBehavior extends Behavior
 
         // If there is a match with banned names, then add to the url underbar to the end
         while (in_array($seoUrl, $this->_stopNames)) {
-            $seoUrl .= '_';
+            $seoUrl .= $this->_extraChar;
         }
 
         $model->{$this->_urlField} = $seoUrl;
@@ -208,7 +227,7 @@ class SeoModelBehavior extends Behavior
             }
 
             // Add "_" at the end of SEO:url
-            $newSeoUrl = $model->{$this->_urlField} . '_';
+            $newSeoUrl = $model->{$this->_urlField} . $this->_extraChar;
             $model->{$this->_urlField} = $newSeoUrl;
             // Run the validator again, because in the previous line, we changed the value of adding a suffix
             $validator->validateAttribute($model, $this->_urlField);
@@ -216,29 +235,8 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Verifies the maximum length of meta-strings, and if it exceeds the limit - cuts to the maximum value
-     *
-     * @param string $key
-     * @param string $lang
+     * {@inheritdoc}
      */
-    private function applyMaxLength($key, $lang)
-    {
-        $value = trim($this->getMetaFieldVal($key, $lang));
-        if ($key === self::TITLE_KEY) {
-            $max = $this->_maxTitleLength;
-        } elseif ($key === self::DESC_KEY) {
-            $max = $this->_maxDescLength;
-        } else {
-            $max = $this->_maxKeysLength;
-        }
-
-        if (mb_strlen($value, $this->_encoding) > $max) {
-            $value = mb_substr($value, 0, $max, $this->_encoding);
-        }
-
-        $this->setMetaFieldVal($key, $lang, $value);
-    }
-
     public function beforeSave()
     {
         $model = $this->owner;
@@ -259,26 +257,8 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Checks completion of all SEO:meta fields. In their absence, they will be generated.
+     * {@inheritdoc}
      */
-    private function fillMeta()
-    {
-        // Loop through all the languages available, it is often only one
-        foreach ($this->_languages as $lang) {
-            // Loop through the meta-fields and fill them in the absence of complete data
-            foreach ($this->getMetaFields() as $meta_params_key => $meta_param_value_generator) {
-                $meta_params_val = $this->getMetaFieldVal($meta_params_key, $lang);
-                if (empty($meta_params_val) && $meta_param_value_generator !== null) {
-                    // Get value from the generator
-                    $meta_params_val = $this->getProduceFieldValue($meta_param_value_generator, $lang);
-                    $this->setMetaFieldVal($meta_params_key, $lang, $this->normalizeStr($meta_params_val));
-                }
-                // We verify that the length of the string in the normal
-                $this->applyMaxLength($meta_params_key, $lang);
-            }
-        }
-    }
-
     public function afterFind()
     {
         $model = $this->owner;
@@ -292,57 +272,6 @@ class SeoModelBehavior extends Behavior
 
             $model->{$this->_metaField} = $meta;
         }
-    }
-
-    /**
-     * Returns an array of meta-fields. As the value goes callback function
-     *
-     * @return callable[]
-     */
-    private function getMetaFields()
-    {
-        return [
-            static::TITLE_KEY => $this->_titleProduceFunc,
-            static::DESC_KEY => $this->_descriptionProduceFunc,
-            static::KEYS_KEY => $this->_keysProduceFunc,
-        ];
-    }
-
-    /**
-     * Returns the value of the $key SEO:meta for the specified $lang language
-     *
-     * @param string $key  key TITLE_KEY, DESC_KEY or KEYS_KEY
-     * @param string $lang language
-     *
-     * @return string|null
-     */
-    private function getMetaFieldVal($key, $lang)
-    {
-        $param = $key . '_' . $lang;
-        $meta = $this->owner->{$this->_metaField};
-
-        return is_array($meta) && isset($meta[$param]) ? $meta[$param] : null;
-    }
-
-    /**
-     * Sets the value of $key in SEO:meta on the specified $lang language
-     *
-     * @param string $key   key TITLE_KEY, DESC_KEY or KEYS_KEY
-     * @param string $lang  language
-     * @param string $value field value
-     */
-    private function setMetaFieldVal($key, $lang, $value)
-    {
-        $model = $this->owner;
-        $param = $key . '_' . $lang;
-        $meta = $model->{$this->_metaField};
-        if (!is_array($meta)) {
-            $meta = [];
-        }
-
-        $meta[$param] = (string)$value;
-
-        $model->{$this->_metaField} = $meta;
     }
 
     /**
@@ -387,22 +316,6 @@ class SeoModelBehavior extends Behavior
     public function getSeoBehavior()
     {
         return $this;
-    }
-
-    /**
-     * Normalize string, prepares it for recording in the database
-     *
-     * @param string $str
-     *
-     * @return string
-     */
-    private function normalizeStr($str)
-    {
-        // Replace all spaces, line breaks and tabs with a single space char
-        $str = preg_replace('/[\s]+/iu', ' ', $str);
-        $str = trim(strip_tags($str));
-
-        return $str;
     }
 
     /**
@@ -499,36 +412,6 @@ class SeoModelBehavior extends Behavior
     }
 
     /**
-     * Returns the generated value for the meta-fields
-     *
-     * @param callable|string $produceFunc
-     * @param string $lang
-     *
-     * @return string
-     */
-    private function getProduceFieldValue($produceFunc, $lang = null)
-    {
-        // Save current site language
-        $originalLanguage = Yii::$app->language;
-        // Change site language to $lang
-        if (!empty($lang)) {
-            Yii::$app->language = $lang;
-        }
-
-        $model = $this->owner;
-        if (is_callable($produceFunc)) {
-            $value = (string)call_user_func($produceFunc, $model, $lang);
-        } else {
-            $value = (string)$model->{$produceFunc};
-        }
-
-        // Restore original site language
-        Yii::$app->language = $originalLanguage;
-
-        return $value;
-    }
-
-    /**
      * Verifies that only correct seo_url is used for current url
      * @return boolean true if all is well, otherwise occurs 301 redirect to the correct URL
      */
@@ -551,17 +434,21 @@ class SeoModelBehavior extends Behavior
      *
      * @return string
      */
-    private function getSeoName($title, $maxLength = 255, $to_lower = true)
+    protected function getSeoName($title, $maxLength = 255, $to_lower = true)
     {
         $trans = [
-            "а" => "a", "б" => "b", "в" => "v", "г" => "g", "д" => "d", "е" => "e", "ё" => "yo", "ж" => "j", "з" => "z", "и" => "i", "й" => "i", "к" => "k", "л" => "l", "м" => "m", "н" => "n", "о" => "o", "п" => "p", "р" => "r", "с" => "s", "т" => "t", "у" => "y", "ф" => "f", "х" => "h", "ц" => "c", "ч" => "ch", "ш" => "sh", "щ" => "sh", "ы" => "i", "э" => "e", "ю" => "u", "я" => "ya",
-            "А" => "A", "Б" => "B", "В" => "V", "Г" => "G", "Д" => "D", "Е" => "E", "Ё" => "Yo", "Ж" => "J", "З" => "Z", "И" => "I", "Й" => "I", "К" => "K", "Л" => "L", "М" => "M", "Н" => "N", "О" => "O", "П" => "P", "Р" => "R", "С" => "S", "Т" => "T", "У" => "Y", "Ф" => "F", "Х" => "H", "Ц" => "C", "Ч" => "Ch", "Ш" => "Sh", "Щ" => "Sh", "Ы" => "I", "Э" => "E", "Ю" => "U", "Я" => "Ya",
-            "ь" => "", "Ь" => "", "ъ" => "", "Ъ" => ""
+            'а' => 'a', 'б' => 'b', 'в' => 'v', 'г' => 'g', 'д' => 'd', 'е' => 'e', 'ё' => 'yo', 'ж' => 'j', 'з' => 'z', 'и' => 'i', 'й' => 'i', 'к' => 'k', 'л' => 'l', 'м' => 'm', 'н' => 'n', 'о' => 'o', 'п' => 'p', 'р' => 'r', 'с' => 's', 'т' => 't', 'у' => 'y', 'ф' => 'f', 'х' => 'h', 'ц' => 'c', 'ч' => 'ch', 'ш' => 'sh', 'щ' => 'sh', 'ы' => 'i', 'э' => 'e', 'ю' => 'u', 'я' => 'ya',
+            'А' => 'A', 'Б' => 'B', 'В' => 'V', 'Г' => 'G', 'Д' => 'D', 'Е' => 'E', 'Ё' => 'Yo', 'Ж' => 'J', 'З' => 'Z', 'И' => 'I', 'Й' => 'I', 'К' => 'K', 'Л' => 'L', 'М' => 'M', 'Н' => 'N', 'О' => 'O', 'П' => 'P', 'Р' => 'R', 'С' => 'S', 'Т' => 'T', 'У' => 'Y', 'Ф' => 'F', 'Х' => 'H', 'Ц' => 'C', 'Ч' => 'Ch', 'Ш' => 'Sh', 'Щ' => 'Sh', 'Ы' => 'I', 'Э' => 'E', 'Ю' => 'U', 'Я' => 'Ya',
+            'ь' => '', 'Ь' => '', 'ъ' => '', 'Ъ' => '',
         ];
+        if ($this->_transliterationList) {
+            // Use custom trans-list
+            $trans = $this->_transliterationList;
+        }
         // Replace the unusable characters on the dashes
-        $title = preg_replace('/[^a-zа-яё\d_-]+/isu', '-', $title);
+        $title = preg_replace($this->_replacementRegex, $this->_replacementChar, $title);
         // Remove dashes from the beginning and end of the line
-        $title = trim($title, '-');
+        $title = trim($title, $this->_replacementChar);
         $title = strtr($title, $trans);
         if ($to_lower) {
             $title = mb_strtolower($title, $this->_encoding);
@@ -572,5 +459,147 @@ class SeoModelBehavior extends Behavior
 
         // Return usable string
         return $title;
+    }
+
+    /**
+     * Verifies the maximum length of meta-strings, and if it exceeds the limit - cuts to the maximum value
+     *
+     * @param string $key
+     * @param string $lang
+     */
+    protected function applyMaxLength($key, $lang)
+    {
+        $value = trim($this->getMetaFieldVal($key, $lang));
+        if ($key === self::TITLE_KEY) {
+            $max = $this->_maxTitleLength;
+        } elseif ($key === self::DESC_KEY) {
+            $max = $this->_maxDescLength;
+        } else {
+            $max = $this->_maxKeysLength;
+        }
+
+        if (mb_strlen($value, $this->_encoding) > $max) {
+            $value = mb_substr($value, 0, $max, $this->_encoding);
+        }
+
+        $this->setMetaFieldVal($key, $lang, $value);
+    }
+
+    /**
+     * Checks completion of all SEO:meta fields. In their absence, they will be generated.
+     */
+    protected function fillMeta()
+    {
+        // Loop through all the languages available, it is often only one
+        foreach ($this->_languages as $lang) {
+            // Loop through the meta-fields and fill them in the absence of complete data
+            foreach ($this->getMetaFields() as $meta_params_key => $meta_param_value_generator) {
+                $meta_params_val = $this->getMetaFieldVal($meta_params_key, $lang);
+                if (empty($meta_params_val) && $meta_param_value_generator !== null) {
+                    // Get value from the generator
+                    $meta_params_val = $this->getProduceFieldValue($meta_param_value_generator, $lang);
+                    $this->setMetaFieldVal($meta_params_key, $lang, $this->normalizeStr($meta_params_val));
+                }
+                // We verify that the length of the string in the normal
+                $this->applyMaxLength($meta_params_key, $lang);
+            }
+        }
+    }
+
+    /**
+     * Returns an array of meta-fields. As the value goes callback function
+     *
+     * @return callable[]
+     */
+    protected function getMetaFields()
+    {
+        return [
+            static::TITLE_KEY => $this->_titleProduceFunc,
+            static::DESC_KEY => $this->_descriptionProduceFunc,
+            static::KEYS_KEY => $this->_keysProduceFunc,
+        ];
+    }
+
+    /**
+     * Returns the value of the $key SEO:meta for the specified $lang language
+     *
+     * @param string $key  key TITLE_KEY, DESC_KEY or KEYS_KEY
+     * @param string $lang language
+     *
+     * @return string|null
+     */
+    protected function getMetaFieldVal($key, $lang)
+    {
+        $param = $key . '_' . $lang;
+        $meta = $this->owner->{$this->_metaField};
+
+        return is_array($meta) && isset($meta[$param]) ? $meta[$param] : null;
+    }
+
+    /**
+     * Sets the value of $key in SEO:meta on the specified $lang language
+     *
+     * @param string $key   key TITLE_KEY, DESC_KEY or KEYS_KEY
+     * @param string $lang  language
+     * @param string $value field value
+     */
+    protected function setMetaFieldVal($key, $lang, $value)
+    {
+        $model = $this->owner;
+        $param = $key . '_' . $lang;
+        $meta = $model->{$this->_metaField};
+        if (!is_array($meta)) {
+            $meta = [];
+        }
+
+        $meta[$param] = (string)$value;
+
+        $model->{$this->_metaField} = $meta;
+    }
+
+    /**
+     * Normalize string, prepares it for recording in the database
+     *
+     * @param string $str
+     *
+     * @return string
+     */
+    protected function normalizeStr($str)
+    {
+        // Replace all spaces, line breaks and tabs with a single space char
+        $str = preg_replace('/[\s]+/iu', ' ', $str);
+        $str = trim(strip_tags($str));
+
+        return $str;
+    }
+
+    /**
+     * Returns the generated value for the meta-fields
+     *
+     * @param callable|string $produceFunc
+     * @param string $lang
+     *
+     * @return string
+     */
+    protected function getProduceFieldValue($produceFunc, $lang = null)
+    {
+        // Save current site language
+        $originalLanguage = Yii::$app->language;
+        // Change site language to $lang
+        if (!empty($lang)) {
+            Yii::$app->language = $lang;
+        }
+
+        $model = $this->owner;
+        if (is_callable($produceFunc)) {
+            $value = (string)call_user_func($produceFunc, $model, $lang);
+        } else {
+            $value = (string)$model->{$produceFunc};
+        }
+
+        // Restore original site language
+        Yii::$app->language = $originalLanguage;
+
+        return $value;
     }
 }
