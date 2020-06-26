@@ -120,6 +120,10 @@ class SeoModelBehavior extends Behavior
             $var = '_' . $key;
             $this->$var = $value;
         }
+        // Set default charset
+        if (!$this->_encoding) {
+            $this->_encoding = Yii::$app->charset;
+        }
 
         $this->_languages = (array)$this->_languages;
         // If there was not passed any language - we use only one system language
